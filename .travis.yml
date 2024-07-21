@@ -1,39 +1,30 @@
 dist: xenial
-language: python
-python:
-  - "3.9"
 
-env:
-  global:
-    - JUNIT_FILE_PATH="samples/python/pytest/reports/junit-report.xml"
+jobs:
+  include:
+    - stage: Run tests and upload results to custom API
+      language: python
+      python: 3.9-dev
+      addons:
+        chrome: stable
+      script:
+        - mvn clean compile test
+      after_script:
+        - >
+          if [ -f "./target/surefire-reports/TEST-TestSuite.xml" ]; then
+            echo "JUnit report file found: ./target/surefire-reports/TEST-TestSuite.xml";
+            API_URL="https://yourapi.example.com/upload";
+            API_KEY="your_api_key";
+            JUNIT_FILE_PATH="./target/surefire-reports/TEST-TestSuite.xml";
+            curl -X POST $API_URL -H "Authorization: Bearer $API_KEY" -F "file=@$JUNIT_FILE_PATH";
+          else
+            echo "JUnit report file not found: ./target/surefire-reports/TEST-TestSuite.xml";
+            exit 1;
+          fi
 
-before_install:
-  - python -m venv venv
-  - source venv/bin/activate
-  - pip install -r requirements.txt
+cache:
+  directories:
+    - $HOME/.m2
 
-install:
-  - sudo apt-get update
-  - sudo apt-get install -y curl
-
-script:
-  - cd samples/python/pytest
-  - python -m venv ./venv
-  - source ./venv/bin/activate
-  - pip install -r requirements.txt
-  - pytest --junitxml=reports/junit-report.xml ./tests || true
-  - echo "JUnit report generated:"
-  - ls -l reports/
-
-after_script:
-  - |
-    if [ -f "$JUNIT_FILE_PATH" ]; then
-      echo "JUnit report file found: $JUNIT_FILE_PATH"
-      CURL_COMMAND="curl -X POST $API_URL -H \"x-api-key: $API_KEY\" -F \"file=@$JUNIT_FILE_PATH\""
-      echo "Executing curl command: $CURL_COMMAND"
-      RESPONSE=$(eval $CURL_COMMAND)
-      echo "API Response:"
-      echo "$RESPONSE"
-    else
-      echo "JUnit report file not found: $JUNIT_FILE_PATH"
-      exit 1
+before_cache:
+  - rm -rf $HOME/.m2/repository/com/example/myproject
