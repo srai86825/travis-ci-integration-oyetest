@@ -1,18 +1,46 @@
 dist: xenial
+
 jobs:
   include:
-    - stage: Run tests and upload results to TestRail
+    - stage: Run tests and upload results to custom API
       language: python
-      python: 3.9-dev
+      python: 3.9
       addons:
         chrome: stable
+      before_install:
+        - wget -N https://chromedriver.storage.googleapis.com/2.41/chromedriver_linux64.zip
+        - sudo mkdir -p /usr/local/bin
+        - sudo unzip chromedriver_linux64.zip -d /usr/local/bin/
+        - sudo apt-get update
+        - sudo apt-get install -y libappindicator1 fonts-liberation xvfb
+        - sudo apt-get install -y libnss3
+        - wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+        - sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+      install:
+        - if [ -f requirements.txt ]; then pip install -r requirements.txt; else echo "No requirements.txt found. Skipping pip install."; fi
+      before_script:
+        - export CHROME_BIN=/usr/bin/google-chrome
+        - export DISPLAY=:99.0
+        - Xvfb :99 -screen 0 1024x768x24 &
+        - sleep 3 # give Xvfb some time to start
       script:
         - mvn clean compile test
       after_script:
         - >
-        if[ -f "./target/surefire-reports/TEST-TestSuite.xml" ] then
-          echo "JUnit report file found: ./target/surefire-reports/TEST-TestSuite.xml";
-        else
-          echo "JUnit report file not found: ./target/surefire-reports/TEST-TestSuite.xml";
-          exit 1;
-        fi
+          if [ -f "./target/surefire-reports/TEST-TestSuite.xml" ]; then
+            echo "JUnit report file found: ./target/surefire-reports/TEST-TestSuite.xml";
+            API_URL="https://yourapi.example.com/upload";
+            API_KEY="your_api_key";
+            JUNIT_FILE_PATH="./target/surefire-reports/TEST-TestSuite.xml";
+            curl -X POST $API_URL -H "Authorization: Bearer $API_KEY" -F "file=@$JUNIT_FILE_PATH";
+          else
+            echo "JUnit report file not found: ./target/surefire-reports/TEST-TestSuite.xml";
+            exit 1;
+          fi
+
+cache:
+  directories:
+    - $HOME/.m2
+
+before_cache:
+  - rm -rf $HOME/.m2/repository/com/example/myproject
