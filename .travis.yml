@@ -9,7 +9,8 @@ jobs:
         chrome: stable
       before_install:
         - wget -N https://chromedriver.storage.googleapis.com/2.41/chromedriver_linux64.zip
-        - unzip chromedriver_linux64.zip -d /home/travis/virtualenv/python3.9/bin/
+        - sudo mkdir -p /usr/local/bin
+        - sudo unzip chromedriver_linux64.zip -d /usr/local/bin/
         - sudo apt-get update
         - sudo apt-get install -y libappindicator1 fonts-liberation
       install:
