@@ -4,7 +4,7 @@ jobs:
   include:
     - stage: Run tests and upload results to custom API
       language: python
-      python: 3.9-dev
+      python: 3.9
       addons:
         chrome: stable
       before_install:
@@ -12,12 +12,14 @@ jobs:
         - sudo mkdir -p /usr/local/bin
         - sudo unzip chromedriver_linux64.zip -d /usr/local/bin/
         - sudo apt-get update
-        - sudo apt-get install -y libappindicator1 fonts-liberation
+        - sudo apt-get install -y libappindicator1 fonts-liberation xvfb
+      install:
+        - if [ -f requirements.txt ]; then pip install -r requirements.txt; else echo "No requirements.txt found. Skipping pip install."; fi
       before_script:
         - export CHROME_BIN=chromium-browser
         - export DISPLAY=:99.0
-        - sh -e /etc/init.d/xvfb start
-        - sleep 3 # give xvfb some time to start
+        - Xvfb :99 -screen 0 1024x768x24 &
+        - sleep 3 # give Xvfb some time to start
       script:
         - mvn clean compile test
       after_script:
